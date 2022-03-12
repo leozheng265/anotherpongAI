@@ -44,16 +44,13 @@ class QLearner(nn.Module):
     def feature_size(self):
             return self.features(autograd.Variable(torch.zeros(1, *self.input_shape))).view(1, -1).size(1)
     
+    
     def act(self, state, epsilon):
         if random.random() > epsilon:
             state = Variable(torch.FloatTensor(np.float32(state)).unsqueeze(0), requires_grad=True)
             # TODO: Given state, you should write code to get the Q value and chosen action
-        
-
-
-
-
-
+            Q = self(state).detach().cpu().numpy()
+            action = np.argmax(Q)
         else:
             action = random.randrange(self.env.action_space.n)
         return action
@@ -61,21 +58,21 @@ class QLearner(nn.Module):
     def copy_from(self, target):
         self.load_state_dict(target.state_dict())
 
-        
+
 def compute_td_loss(model, target_model, batch_size, gamma, replay_buffer):
     state, action, reward, next_state, done = replay_buffer.sample(batch_size)
 
-    state = Variable(torch.FloatTensor(np.float32(state)))
+    state = Variable(torch.FloatTensor(np.float32(state).squeeze(1)))
     next_state = Variable(torch.FloatTensor(np.float32(next_state)).squeeze(1), requires_grad=True)
     action = Variable(torch.LongTensor(action))
     reward = Variable(torch.FloatTensor(reward))
     done = Variable(torch.FloatTensor(done))
     # implement the loss function here
-
-
-    
+    p = target_model(next_state)
+    q = model(state).gather(1, action.unsqueeze(1)).squeeze(1)
+    y = reward + gamma * p.max(1)[0] * (1 - done)
+    loss = torch.mean((y - q) ** 2)
     return loss
-
 
 class ReplayBuffer(object):
     def __init__(self, capacity):
@@ -89,8 +86,10 @@ class ReplayBuffer(object):
 
     def sample(self, batch_size):
         # TODO: Randomly sampling data with specific batch size from the buffer
+        sampleBuffer = random.sample(self.buffer, k = batch_size)
 
-
+        state, action, reward, next_state, done = zip(*sampleBuffer)
+        #print("action: ", action, "\nreward: ", reward,  "\ndone: ", done)
         return state, action, reward, next_state, done
 
     def __len__(self):
