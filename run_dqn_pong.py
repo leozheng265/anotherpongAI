@@ -11,6 +11,7 @@ import torch.autograd as autograd
 import torch.nn.functional as F
 USE_CUDA = torch.cuda.is_available()
 from dqn import QLearner, compute_td_loss, ReplayBuffer
+import pickle
 
 env_id = "PongNoFrameskip-v4"
 env = make_atari(env_id)
@@ -78,8 +79,18 @@ for frame_idx in range(1, num_frames + 1):
         print('#Frame: %d, Loss: %f' % (frame_idx, np.mean(losses, 0)[1]))
         print('Last-10 average reward: %f' % np.mean(all_rewards[-10:], 0)[1])
 
-    if frame_idx % 50000 == 0:
+    if frame_idx % 10000 == 0:
         target_model.copy_from(model)
 
+torch.save(model.state_dict(), "model.pth")
+with open("losses_file.pkl", "wb") as losses_file:
+    pickle.dump(losses, losses_file)
+
+with open("all_rewards_file.pkl", "wb") as all_rewards_file:
+    pickle.dump(all_rewards, all_rewards_file)
+
+with open(loss_save, 'rb') as file:
+    loss_load = pickld.load(file)
+    plt.plot(loss_load,cpu())
 
 
